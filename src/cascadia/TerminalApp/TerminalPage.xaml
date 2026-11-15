@@ -57,7 +57,6 @@
                       CanDragItems="False"
                       CanReorderItems="False"
                       ContainerContentChanging="_OnVerticalTabContainerContentChanging"
-                      PointerCaptureLost="_OnVerticalTabPointerCaptureLost"
                       IsItemClickEnabled="False"
                       RightTapped="_OnVerticalTabRightTapped"
                       SelectionChanged="_OnVerticalTabSelectionChanged"

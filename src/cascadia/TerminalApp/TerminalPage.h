@@ -245,7 +245,9 @@ namespace winrt::TerminalApp::implementation
         bool _rearranging{ false };
         bool _syncingVerticalTabs{ false };
         winrt::TerminalApp::Tab _verticalPressedTab{ nullptr };
+        winrt::Windows::UI::Xaml::Controls::Primitives::SelectorItem _verticalDragContainer{ nullptr };
         double _verticalPressY{ 0 };
+        double _verticalLastY{ 0 };
         bool _verticalDragging{ false };
         std::optional<int> _rearrangeFrom{};
         std::optional<int> _rearrangeTo{};
@@ -349,10 +351,13 @@ namespace winrt::TerminalApp::implementation
         void _OnVerticalTabPointerReleased(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         void _OnVerticalTabRightTapped(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::RightTappedRoutedEventArgs& e);
         void _OnVerticalTabContainerContentChanging(const Windows::UI::Xaml::Controls::ListViewBase& sender, const Windows::UI::Xaml::Controls::ContainerContentChangingEventArgs& e);
-        void _OnVerticalTabPointerPressed(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
-        void _OnVerticalTabPointerMoved(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
-        void _OnVerticalTabPointerCaptureLost(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
-        void _endVerticalTabDrag();
+        void _OnVerticalTabItemPointerPressed(const Windows::UI::Xaml::Controls::Primitives::SelectorItem& container, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
+        void _OnVerticalTabItemPointerMoved(const Windows::UI::Xaml::Controls::Primitives::SelectorItem& container, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
+        void _OnVerticalTabItemPointerReleased(const Windows::UI::Xaml::Controls::Primitives::SelectorItem& container, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
+        void _OnVerticalTabItemPointerCaptureLost(const Windows::UI::Xaml::Controls::Primitives::SelectorItem& container, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
+        void _finishVerticalTabDrag(bool commit);
+        uint32_t _verticalTabDropIndex(double y, uint32_t from);
+        safe_void_coroutine _moveVerticalTab(winrt::TerminalApp::Tab tab, uint32_t to);
         void _updateVerticalTabCloseButton(const Windows::UI::Xaml::Controls::Primitives::SelectorItem& container, bool hovered);
         void _updateAllVerticalTabCloseButtons();
         void _UpdateTabWidthMode();

@@ -418,12 +418,6 @@ namespace winrt::TerminalApp::implementation
                 page->_scheduleVerticalTabSync();
             }
         });
-        VerticalTabList().AddHandler(UIElement::PointerPressedEvent(),
-                                     winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ this, &TerminalPage::_OnVerticalTabPointerPressed }),
-                                     true);
-        VerticalTabList().AddHandler(UIElement::PointerMovedEvent(),
-                                     winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ this, &TerminalPage::_OnVerticalTabPointerMoved }),
-                                     true);
         VerticalTabList().AddHandler(UIElement::PointerReleasedEvent(),
                                      winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ this, &TerminalPage::_OnVerticalTabPointerReleased }),
                                      true);

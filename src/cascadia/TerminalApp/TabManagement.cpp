@@ -1238,68 +1238,85 @@ namespace winrt::TerminalApp::implementation
         _updateAllVerticalTabCloseButtons();
     }
 
-    static winrt::TerminalApp::Tab tabFromEventSource(const IInspectable& originalSource)
+    static winrt::TerminalApp::Tab tabFromEventSource(const ListView& list, const IInspectable& originalSource)
     {
-        if (const auto element{ originalSource.try_as<FrameworkElement>() })
+        auto element{ originalSource.try_as<DependencyObject>() };
+        if (const auto frameworkElement{ element.try_as<FrameworkElement>() })
         {
-            return element.DataContext().try_as<winrt::TerminalApp::Tab>();
+            if (const auto tab{ frameworkElement.DataContext().try_as<winrt::TerminalApp::Tab>() })
+            {
+                return tab;
+            }
+        }
+        while (element)
+        {
+            if (const auto container{ element.try_as<Primitives::SelectorItem>() })
+            {
+                return list.ItemFromContainer(container).try_as<winrt::TerminalApp::Tab>();
+            }
+            element = Media::VisualTreeHelper::GetParent(element);
         }
         return nullptr;
     }
 
     void TerminalPage::_OnVerticalTabPointerReleased(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
     {
-        if (_verticalDragging)
-        {
-            e.Handled(true);
-            _endVerticalTabDrag();
-            return;
-        }
-        _verticalPressedTab = nullptr;
-
         const auto updateKind = e.GetCurrentPoint(nullptr).Properties().PointerUpdateKind();
         if (updateKind != winrt::Windows::UI::Input::PointerUpdateKind::MiddleButtonReleased)
         {
             return;
         }
 
-        if (const auto tab{ tabFromEventSource(e.OriginalSource()) })
+        if (const auto tab{ tabFromEventSource(VerticalTabList(), e.OriginalSource()) })
         {
             _HandleCloseTabRequested(tab);
             e.Handled(true);
         }
     }
 
-    void TerminalPage::_OnVerticalTabPointerPressed(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
+    // Drag-to-reorder is tracked on each ListViewItem container rather than on
+    // the ListView: the container already captures the pointer on press, so it
+    // keeps receiving PointerMoved/PointerReleased for the whole gesture. _tabs
+    // is not touched until the drop, because mutating the ItemsSource mid-drag
+    // removes (and recycles) the very container that holds the capture.
+    void TerminalPage::_OnVerticalTabItemPointerPressed(const Primitives::SelectorItem& container, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
     {
-        VerticalTabList().Header(winrt::box_value(winrt::hstring{ L"DBG pressed src=" } + winrt::get_class_name(e.OriginalSource()) + L" tab=" + (tabFromEventSource(e.OriginalSource()) ? L"y" : L"n") + L" left=" + (e.GetCurrentPoint(VerticalTabList()).Properties().IsLeftButtonPressed() ? L"y" : L"n")));
-        const auto point = e.GetCurrentPoint(VerticalTabList());
-        if (!point.Properties().IsLeftButtonPressed())
+        const auto verticalTabList = VerticalTabList();
+        const auto point = e.GetCurrentPoint(verticalTabList);
+        const auto tab = verticalTabList.ItemFromContainer(container).try_as<winrt::TerminalApp::Tab>();
+        verticalTabList.Header(winrt::box_value(winrt::hstring{ L"DBG pressed src=" } + winrt::get_class_name(e.OriginalSource()) + L" tab=" + (tab ? L"y" : L"n") + L" left=" + (point.Properties().IsLeftButtonPressed() ? L"y" : L"n")));
+
+        _finishVerticalTabDrag(false);
+        if (!tab ||
+            !point.Properties().IsLeftButtonPressed() ||
+            e.Pointer().PointerDeviceType() == winrt::Windows::Devices::Input::PointerDeviceType::Touch)
         {
             return;
         }
-        _verticalPressedTab = tabFromEventSource(e.OriginalSource());
+
+        _verticalPressedTab = tab;
+        _verticalDragContainer = container;
         _verticalPressY = point.Position().Y;
-        _verticalDragging = false;
+        _verticalLastY = _verticalPressY;
     }
 
-    void TerminalPage::_OnVerticalTabPointerMoved(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
+    void TerminalPage::_OnVerticalTabItemPointerMoved(const Primitives::SelectorItem& container, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
     {
+        const auto verticalTabList = VerticalTabList();
+        const auto point = e.GetCurrentPoint(verticalTabList);
         {
             static int moves = 0;
             ++moves;
-            VerticalTabList().Header(winrt::box_value(winrt::hstring{ L"DBG moved " } + winrt::to_hstring(moves) + L" pressedTab=" + (_verticalPressedTab ? L"y" : L"n") + L" drag=" + (_verticalDragging ? L"y" : L"n") + L" left=" + (e.GetCurrentPoint(VerticalTabList()).Properties().IsLeftButtonPressed() ? L"y" : L"n")));
+            verticalTabList.Header(winrt::box_value(winrt::hstring{ L"DBG moved " } + winrt::to_hstring(moves) + L" pressedTab=" + (_verticalPressedTab ? L"y" : L"n") + L" drag=" + (_verticalDragging ? L"y" : L"n") + L" left=" + (point.Properties().IsLeftButtonPressed() ? L"y" : L"n")));
         }
-        if (!_verticalPressedTab)
+        if (!_verticalPressedTab || container != _verticalDragContainer)
         {
             return;
         }
 
-        const auto verticalTabList = VerticalTabList();
-        const auto point = e.GetCurrentPoint(verticalTabList);
         if (!point.Properties().IsLeftButtonPressed())
         {
-            _endVerticalTabDrag();
+            _finishVerticalTabDrag(false);
             return;
         }
 
@@ -1312,62 +1329,129 @@ namespace winrt::TerminalApp::implementation
                 return;
             }
             _verticalDragging = true;
-            verticalTabList.CapturePointer(e.Pointer());
+            container.CapturePointer(e.Pointer());
+            Canvas::SetZIndex(container, 1);
+            container.Opacity(0.8);
+            container.RenderTransform(Media::TranslateTransform{});
         }
-        e.Handled(true);
 
-        uint32_t from{};
-        if (!_tabs.IndexOf(_verticalPressedTab, from))
+        e.Handled(true);
+        _verticalLastY = y;
+        if (const auto transform{ container.RenderTransform().try_as<Media::TranslateTransform>() })
         {
-            _endVerticalTabDrag();
+            transform.Y(y - _verticalPressY);
+        }
+    }
+
+    void TerminalPage::_OnVerticalTabItemPointerReleased(const Primitives::SelectorItem& container, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
+    {
+        if (container != _verticalDragContainer)
+        {
+            return;
+        }
+        if (_verticalDragging)
+        {
+            e.Handled(true);
+            _verticalLastY = e.GetCurrentPoint(VerticalTabList()).Position().Y;
+        }
+        _finishVerticalTabDrag(true);
+    }
+
+    void TerminalPage::_OnVerticalTabItemPointerCaptureLost(const Primitives::SelectorItem& container, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
+    {
+        // The ListViewItem's own PointerReleased handling releases its capture
+        // before our handler runs, so a lost capture while dragging is a drop.
+        // Capture changes of children (e.g. the close button) bubble up here
+        // too and are ignored.
+        if (container == _verticalDragContainer && e.OriginalSource() == container)
+        {
+            _finishVerticalTabDrag(true);
+        }
+    }
+
+    void TerminalPage::_finishVerticalTabDrag(const bool commit)
+    {
+        const auto container{ std::exchange(_verticalDragContainer, nullptr) };
+        const auto tab{ std::exchange(_verticalPressedTab, nullptr) };
+        const auto wasDragging{ std::exchange(_verticalDragging, false) };
+        if (!container || !wasDragging)
+        {
             return;
         }
 
+        container.RenderTransform(nullptr);
+        container.Opacity(1.0);
+        Canvas::SetZIndex(container, 0);
+        container.ReleasePointerCaptures();
+
+        uint32_t from{};
+        if (!commit || !tab || !_tabs.IndexOf(tab, from))
+        {
+            return;
+        }
+        const auto to = _verticalTabDropIndex(_verticalLastY, from);
+        VerticalTabList().Header(winrt::box_value(winrt::hstring{ L"DBG drop from=" } + winrt::to_hstring(from) + L" to=" + winrt::to_hstring(to)));
+        if (to != from)
+        {
+            _moveVerticalTab(tab, to);
+        }
+    }
+
+    // Returns the final index for the dragged tab: the number of other tabs
+    // whose vertical midpoint lies above y. Unrealized containers before the
+    // realized range are above the viewport, those after it are below.
+    uint32_t TerminalPage::_verticalTabDropIndex(const double y, const uint32_t from)
+    {
+        const auto verticalTabList = VerticalTabList();
         const auto size = _tabs.Size();
-        auto target = size - 1;
+        uint32_t to{ 0 };
+        auto seenRealized{ false };
         for (uint32_t i = 0; i < size; ++i)
         {
-            if (const auto container{ verticalTabList.ContainerFromIndex(i).try_as<FrameworkElement>() })
+            if (i == from)
             {
-                const auto top = container.TransformToVisual(verticalTabList).TransformPoint({ 0, 0 }).Y;
-                if (y < top + container.ActualHeight())
+                continue;
+            }
+            const auto container{ verticalTabList.ContainerFromIndex(i).try_as<FrameworkElement>() };
+            if (!container)
+            {
+                if (!seenRealized)
                 {
-                    target = i;
-                    break;
+                    ++to;
                 }
+                continue;
+            }
+            seenRealized = true;
+            const auto top = container.TransformToVisual(verticalTabList).TransformPoint({ 0, 0 }).Y;
+            if (top + container.ActualHeight() / 2 < y)
+            {
+                ++to;
             }
         }
-
-        if (target != from)
-        {
-            _TryMoveTab(from, gsl::narrow_cast<int32_t>(target));
-        }
+        return to;
     }
 
-    void TerminalPage::_OnVerticalTabPointerCaptureLost(const IInspectable& sender, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
+    safe_void_coroutine TerminalPage::_moveVerticalTab(winrt::TerminalApp::Tab tab, uint32_t to)
     {
-        // Item containers capture the pointer while pressed; their capture
-        // changes bubble up here too. Only our own capture ending the drag matters.
-        if (_verticalDragging && e.OriginalSource() == sender)
+        // Defer the move so the container that raised the pointer event is not
+        // removed from the tree while its event is still being routed.
+        const auto weakThis{ get_weak() };
+        co_await wil::resume_foreground(Dispatcher(), CoreDispatcherPriority::Normal);
+        const auto page{ weakThis.get() };
+        if (!page)
         {
-            _endVerticalTabDrag();
+            co_return;
         }
-    }
-
-    void TerminalPage::_endVerticalTabDrag()
-    {
-        const auto wasDragging = _verticalDragging;
-        _verticalDragging = false;
-        _verticalPressedTab = nullptr;
-        if (wasDragging)
+        uint32_t from{};
+        if (page->_tabs.IndexOf(tab, from) && from != to)
         {
-            VerticalTabList().ReleasePointerCaptures();
+            page->_TryMoveTab(from, gsl::narrow_cast<int32_t>(to));
         }
     }
 
     void TerminalPage::_OnVerticalTabRightTapped(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Input::RightTappedRoutedEventArgs& e)
     {
-        const auto tab{ tabFromEventSource(e.OriginalSource()) };
+        const auto tab{ tabFromEventSource(VerticalTabList(), e.OriginalSource()) };
         if (!tab)
         {
             return;
@@ -1481,6 +1565,46 @@ namespace winrt::TerminalApp::implementation
                     page->_updateVerticalTabCloseButton(item, false);
                 }
             });
+            container.AddHandler(UIElement::PointerPressedEvent(),
+                                 winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ [weakThis{ get_weak() }, weakContainer](auto&&, const auto& args) {
+                                     const auto page{ weakThis.get() };
+                                     const auto item{ weakContainer.get() };
+                                     if (page && item)
+                                     {
+                                         page->_OnVerticalTabItemPointerPressed(item, args);
+                                     }
+                                 } }),
+                                 true);
+            container.AddHandler(UIElement::PointerMovedEvent(),
+                                 winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ [weakThis{ get_weak() }, weakContainer](auto&&, const auto& args) {
+                                     const auto page{ weakThis.get() };
+                                     const auto item{ weakContainer.get() };
+                                     if (page && item)
+                                     {
+                                         page->_OnVerticalTabItemPointerMoved(item, args);
+                                     }
+                                 } }),
+                                 true);
+            container.AddHandler(UIElement::PointerReleasedEvent(),
+                                 winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ [weakThis{ get_weak() }, weakContainer](auto&&, const auto& args) {
+                                     const auto page{ weakThis.get() };
+                                     const auto item{ weakContainer.get() };
+                                     if (page && item)
+                                     {
+                                         page->_OnVerticalTabItemPointerReleased(item, args);
+                                     }
+                                 } }),
+                                 true);
+            container.AddHandler(UIElement::PointerCaptureLostEvent(),
+                                 winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ [weakThis{ get_weak() }, weakContainer](auto&&, const auto& args) {
+                                     const auto page{ weakThis.get() };
+                                     const auto item{ weakContainer.get() };
+                                     if (page && item)
+                                     {
+                                         page->_OnVerticalTabItemPointerCaptureLost(item, args);
+                                     }
+                                 } }),
+                                 true);
         }
         _updateVerticalTabCloseButton(container, false);
     }
