@@ -179,6 +179,12 @@
   <data name="TabClose" xml:space="preserve">
     <value>Close tab</value>
   </data>
+  <data name="VerticalTabCloseButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Close tab</value>
+  </data>
+  <data name="VerticalTabCloseButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Close tab</value>
+  </data>
   <data name="PaneClose" xml:space="preserve">
     <value>Close pane</value>
   </data>

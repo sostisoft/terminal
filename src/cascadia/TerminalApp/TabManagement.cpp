@@ -151,6 +151,10 @@ namespace winrt::TerminalApp::implementation
         });
 
         auto tabViewItem = newTabImpl->TabViewItem();
+        if (_settings.GlobalSettings().VerticalTabs())
+        {
+            tabViewItem.Visibility(Visibility::Collapsed);
+        }
         _tabView.TabItems().InsertAt(insertPosition, tabViewItem);
 
         // Set this tab's icon to the icon from the content
@@ -258,6 +262,11 @@ namespace winrt::TerminalApp::implementation
             // collapse/show the row that the tabs are in.
             // NaN is the special value XAML uses for "Auto" sizing.
             _tabRow.Height(isVisible ? NAN : 0);
+        }
+        if (const auto verticalTabList{ VerticalTabList() })
+        {
+            const auto showVertical = isVisible && _settings.GlobalSettings().VerticalTabs();
+            verticalTabList.Visibility(showVertical ? Visibility::Visible : Visibility::Collapsed);
         }
     }
 
@@ -951,6 +960,7 @@ namespace winrt::TerminalApp::implementation
         {
             _tabContent.Children().Clear();
             _tabContent.Children().Append(tab.Content());
+            _syncVerticalTabSelection();
 
             // GH#7409: If the tab switcher is open, then we _don't_ want to
             // automatically focus the new tab here. The tab switcher wants
@@ -1158,5 +1168,274 @@ namespace winrt::TerminalApp::implementation
     bool TerminalPage::_HasMultipleTabs() const
     {
         return _tabs.Size() > 1;
+    }
+
+    void TerminalPage::_applyVerticalTabs()
+    {
+        const auto enabled = _settings.GlobalSettings().VerticalTabs();
+        const auto itemVisibility = enabled ? Visibility::Collapsed : Visibility::Visible;
+        for (const auto& tab : _tabs)
+        {
+            tab.TabViewItem().Visibility(itemVisibility);
+            if (!enabled)
+            {
+                if (const auto tabImpl{ _GetTabImpl(tab) })
+                {
+                    tabImpl->FlyoutAnchor(nullptr);
+                }
+            }
+        }
+
+        const auto verticalTabList = VerticalTabList();
+        verticalTabList.CanDragItems(CanDragDrop());
+        verticalTabList.ItemsSource(enabled ? _tabs : nullptr);
+        _UpdateTabView();
+        _syncVerticalTabSelection();
+    }
+
+    void TerminalPage::_syncVerticalTabSelection()
+    {
+        if (!_settings || !_settings.GlobalSettings().VerticalTabs())
+        {
+            return;
+        }
+
+        const auto verticalTabList = VerticalTabList();
+        const auto focusedTab = _GetFocusedTab();
+        if (!focusedTab || verticalTabList.SelectedItem() == focusedTab)
+        {
+            return;
+        }
+
+        _syncingVerticalTabs = true;
+        verticalTabList.SelectedItem(focusedTab);
+        verticalTabList.ScrollIntoView(focusedTab);
+        _syncingVerticalTabs = false;
+        _updateAllVerticalTabCloseButtons();
+    }
+
+    safe_void_coroutine TerminalPage::_scheduleVerticalTabSync()
+    {
+        const auto weakThis{ get_weak() };
+        co_await wil::resume_foreground(Dispatcher(), CoreDispatcherPriority::Low);
+        if (const auto page{ weakThis.get() })
+        {
+            page->_syncVerticalTabSelection();
+        }
+    }
+
+    void TerminalPage::_OnVerticalTabSelectionChanged(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Controls::SelectionChangedEventArgs& /*e*/)
+    {
+        if (_syncingVerticalTabs || _rearranging || _removing)
+        {
+            return;
+        }
+
+        const auto selectedTab = VerticalTabList().SelectedItem().try_as<winrt::TerminalApp::Tab>();
+        if (selectedTab && selectedTab != _GetFocusedTab())
+        {
+            _SetFocusedTab(selectedTab);
+        }
+        _updateAllVerticalTabCloseButtons();
+    }
+
+    static winrt::TerminalApp::Tab tabFromEventSource(const IInspectable& originalSource)
+    {
+        if (const auto element{ originalSource.try_as<FrameworkElement>() })
+        {
+            return element.DataContext().try_as<winrt::TerminalApp::Tab>();
+        }
+        return nullptr;
+    }
+
+    void TerminalPage::_OnVerticalTabPointerReleased(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs& e)
+    {
+        const auto updateKind = e.GetCurrentPoint(nullptr).Properties().PointerUpdateKind();
+        if (updateKind != winrt::Windows::UI::Input::PointerUpdateKind::MiddleButtonReleased)
+        {
+            return;
+        }
+
+        if (const auto tab{ tabFromEventSource(e.OriginalSource()) })
+        {
+            _HandleCloseTabRequested(tab);
+            e.Handled(true);
+        }
+    }
+
+    void TerminalPage::_OnVerticalTabRightTapped(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::Input::RightTappedRoutedEventArgs& e)
+    {
+        const auto tab{ tabFromEventSource(e.OriginalSource()) };
+        if (!tab)
+        {
+            return;
+        }
+
+        if (const auto flyout{ tab.TabViewItem().ContextFlyout() })
+        {
+            flyout.ShowAt(e.OriginalSource().as<FrameworkElement>());
+            e.Handled(true);
+        }
+    }
+
+    static UIElement verticalTabCloseButton(const Primitives::SelectorItem& container)
+    {
+        if (const auto root{ container.ContentTemplateRoot().try_as<Panel>() })
+        {
+            for (const auto& child : root.Children())
+            {
+                if (child.try_as<Button>())
+                {
+                    return child;
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    void TerminalPage::_updateVerticalTabCloseButton(const Primitives::SelectorItem& container, bool hovered)
+    {
+        const auto button{ verticalTabCloseButton(container) };
+        if (!button)
+        {
+            return;
+        }
+
+        const auto theme = _settings.GlobalSettings().CurrentTheme();
+        const auto mode = (theme && theme.Tab()) ? theme.Tab().ShowCloseButton() : TabCloseButtonVisibility::Always;
+        bool show = false;
+        switch (mode)
+        {
+        case TabCloseButtonVisibility::Always:
+            show = true;
+            break;
+        case TabCloseButtonVisibility::Hover:
+            show = hovered || container.IsSelected();
+            break;
+        case TabCloseButtonVisibility::ActiveOnly:
+            show = container.IsSelected();
+            break;
+        default:
+            show = false;
+            break;
+        }
+
+        button.Opacity(show ? 1.0 : 0.0);
+        button.IsHitTestVisible(show);
+    }
+
+    void TerminalPage::_updateAllVerticalTabCloseButtons()
+    {
+        const auto verticalTabList = VerticalTabList();
+        const auto size = _tabs.Size();
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            if (const auto container{ verticalTabList.ContainerFromIndex(i).try_as<Primitives::SelectorItem>() })
+            {
+                _updateVerticalTabCloseButton(container, false);
+            }
+        }
+    }
+
+    void TerminalPage::_OnVerticalTabContainerContentChanging(const ListViewBase& /*sender*/, const ContainerContentChangingEventArgs& e)
+    {
+        const auto tab = e.Item().try_as<winrt::TerminalApp::Tab>();
+        const auto tabImpl = tab ? _GetTabImpl(tab) : nullptr;
+        if (e.InRecycleQueue())
+        {
+            if (tabImpl)
+            {
+                tabImpl->FlyoutAnchor(nullptr);
+            }
+            return;
+        }
+
+        const auto container = e.ItemContainer();
+        if (tabImpl)
+        {
+            tabImpl->FlyoutAnchor(container);
+        }
+
+        if (!container.Tag())
+        {
+            container.Tag(winrt::box_value(true));
+            const auto weakContainer = winrt::make_weak(container);
+            container.PointerEntered([weakThis{ get_weak() }, weakContainer](auto&&, auto&&) {
+                const auto page{ weakThis.get() };
+                const auto item{ weakContainer.get() };
+                if (page && item)
+                {
+                    page->_updateVerticalTabCloseButton(item, true);
+                }
+            });
+            container.PointerExited([weakThis{ get_weak() }, weakContainer](auto&&, auto&&) {
+                const auto page{ weakThis.get() };
+                const auto item{ weakContainer.get() };
+                if (page && item)
+                {
+                    page->_updateVerticalTabCloseButton(item, false);
+                }
+            });
+        }
+        _updateVerticalTabCloseButton(container, false);
+    }
+
+    void TerminalPage::_OnVerticalTabDragItemsStarting(const IInspectable& /*sender*/, const DragItemsStartingEventArgs& e)
+    {
+        const auto items = e.Items();
+        _verticalDragTab = items.Size() > 0 ? items.GetAt(0).try_as<winrt::TerminalApp::Tab>() : nullptr;
+        if (!_verticalDragTab)
+        {
+            e.Cancel(true);
+            return;
+        }
+        e.Data().RequestedOperation(DataPackageOperation::Move);
+    }
+
+    void TerminalPage::_OnVerticalTabDragOver(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::DragEventArgs& e)
+    {
+        if (_verticalDragTab)
+        {
+            e.AcceptedOperation(DataPackageOperation::Move);
+            e.Handled(true);
+        }
+    }
+
+    void TerminalPage::_OnVerticalTabDrop(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::DragEventArgs& e)
+    {
+        if (!_verticalDragTab)
+        {
+            return;
+        }
+
+        uint32_t from{};
+        if (!_tabs.IndexOf(_verticalDragTab, from))
+        {
+            return;
+        }
+
+        const auto verticalTabList = VerticalTabList();
+        const auto size = _tabs.Size();
+        auto insertBefore = size;
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            if (const auto container{ verticalTabList.ContainerFromIndex(i).try_as<FrameworkElement>() })
+            {
+                if (e.GetPosition(container).Y < container.ActualHeight() / 2)
+                {
+                    insertBefore = i;
+                    break;
+                }
+            }
+        }
+
+        const auto to = insertBefore > from ? insertBefore - 1 : insertBefore;
+        e.Handled(true);
+        _TryMoveTab(from, gsl::narrow_cast<int32_t>(to));
+    }
+
+    void TerminalPage::_OnVerticalTabDragItemsCompleted(const ListViewBase& /*sender*/, const DragItemsCompletedEventArgs& /*e*/)
+    {
+        _verticalDragTab = nullptr;
     }
 }

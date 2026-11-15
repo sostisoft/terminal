@@ -412,6 +412,16 @@ namespace winrt::TerminalApp::implementation
         _tabView.SelectionChanged({ this, &TerminalPage::_OnTabSelectionChanged });
         _tabView.TabCloseRequested({ this, &TerminalPage::_OnTabCloseRequested });
         _tabView.TabItemsChanged({ this, &TerminalPage::_OnTabItemsChanged });
+        _tabs.VectorChanged([weakThis{ get_weak() }](auto&&, auto&&) {
+            if (const auto page{ weakThis.get() })
+            {
+                page->_scheduleVerticalTabSync();
+            }
+        });
+        VerticalTabList().AddHandler(UIElement::PointerReleasedEvent(),
+                                     winrt::box_value(winrt::Windows::UI::Xaml::Input::PointerEventHandler{ this, &TerminalPage::_OnVerticalTabPointerReleased }),
+                                     true);
+        _applyVerticalTabs();
 
         _tabView.TabDragStarting({ this, &TerminalPage::_onTabDragStarting });
         _tabView.TabStripDragOver({ this, &TerminalPage::_onTabStripDragOver });
@@ -3962,6 +3972,8 @@ namespace winrt::TerminalApp::implementation
         // up the previous ones we built.
         _terminalSettingsCache->Reset(_settings);
 
+        _applyVerticalTabs();
+
         for (const auto& tab : _tabs)
         {
             if (auto tabImpl{ _GetTabImpl(tab) })
@@ -5014,6 +5026,11 @@ namespace winrt::TerminalApp::implementation
         if (!_settings.GlobalSettings().ShowTabsInTitlebar())
         {
             _tabRow.Background(TitlebarBrush());
+        }
+
+        if (const auto verticalTabList{ VerticalTabList() })
+        {
+            verticalTabList.Background(TitlebarBrush());
         }
 
         // Second: Update the colors of our individual TabViewItems. This
