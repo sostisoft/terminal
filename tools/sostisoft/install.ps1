@@ -28,6 +28,17 @@ $msixPath = Join-Path $workDir $msixAsset.name
 Invoke-WebRequest $cerAsset.browser_download_url -OutFile $cerPath -UseBasicParsing
 Invoke-WebRequest $msixAsset.browser_download_url -OutFile $msixPath -UseBasicParsing
 
+$dependencyPaths = @()
+foreach ($dependency in ($release.assets | Where-Object { $_.name -like '*.appx' })) {
+    $dependencyPath = Join-Path $workDir $dependency.name
+    Invoke-WebRequest $dependency.browser_download_url -OutFile $dependencyPath -UseBasicParsing
+    $dependencyPaths += $dependencyPath
+}
+
 Import-Certificate -FilePath $cerPath -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
-Add-AppxPackage -Path $msixPath -ForceApplicationShutdown
+if ($dependencyPaths.Count -gt 0) {
+    Add-AppxPackage -Path $msixPath -DependencyPath $dependencyPaths -ForceApplicationShutdown
+} else {
+    Add-AppxPackage -Path $msixPath -ForceApplicationShutdown
+}
 Write-Host "Terminal Vertical $($release.tag_name) installed. Launch it from the Start menu or run 'wtd'."
