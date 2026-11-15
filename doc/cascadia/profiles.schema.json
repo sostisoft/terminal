@@ -2736,6 +2736,11 @@
           "description": "When set to true, the tabs are moved into the titlebar and the titlebar disappears. When set to false, the titlebar sits above the tabs.",
           "type": "boolean"
         },
+        "experimental.verticalTabs": {
+          "default": false,
+          "description": "When set to true, tabs are shown in a vertical list on the left side of the window instead of in the tab row.",
+          "type": "boolean"
+        },
         "showTerminalTitleInTitlebar": {
           "default": true,
           "description": "When set to true, titlebar displays the title of the selected tab. When set to false, titlebar displays \"Windows Terminal\".",

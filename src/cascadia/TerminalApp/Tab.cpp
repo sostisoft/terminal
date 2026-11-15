@@ -848,7 +848,7 @@ namespace winrt::TerminalApp::implementation
             }
         });
 
-        _tabColorPickup.ShowAt(TabViewItem());
+        _tabColorPickup.ShowAt(_flyoutTarget());
     }
 
     // Method Description:
@@ -1038,7 +1038,80 @@ namespace winrt::TerminalApp::implementation
     {
         ASSERT_UI_THREAD();
 
+        if (_flyoutAnchor)
+        {
+            _showRenameFlyout();
+            return;
+        }
         _headerControl.BeginRename();
+    }
+
+    void Tab::RequestClose()
+    {
+        ASSERT_UI_THREAD();
+
+        CloseRequested.raise(nullptr, nullptr);
+    }
+
+    // Method Description:
+    // - Sets the element that flyouts (renamer, color picker) should be
+    //   anchored to, instead of the TabViewItem. Used by the vertical tab
+    //   sidebar, where the TabViewItem itself is collapsed.
+    void Tab::FlyoutAnchor(const winrt::Windows::UI::Xaml::FrameworkElement& anchor)
+    {
+        _flyoutAnchor = anchor;
+    }
+
+    winrt::Windows::UI::Xaml::FrameworkElement Tab::_flyoutTarget() const
+    {
+        if (_flyoutAnchor)
+        {
+            return _flyoutAnchor;
+        }
+        return TabViewItem();
+    }
+
+    void Tab::_showRenameFlyout()
+    {
+        WUX::Controls::TextBox renameBox;
+        renameBox.Text(_runtimeTabText.empty() ? Title() : _runtimeTabText);
+        renameBox.MinWidth(_flyoutAnchor.ActualWidth());
+
+        WUX::Controls::Flyout flyout;
+        flyout.Content(renameBox);
+        flyout.Placement(WUX::Controls::Primitives::FlyoutPlacementMode::RightEdgeAlignedTop);
+
+        renameBox.KeyDown([weakThis = get_weak(), weakFlyout = winrt::make_weak(flyout)](const winrt::Windows::Foundation::IInspectable& sender, const WUX::Input::KeyRoutedEventArgs& e) {
+            const auto key = e.OriginalKey();
+            if (key != winrt::Windows::System::VirtualKey::Enter && key != winrt::Windows::System::VirtualKey::Escape)
+            {
+                return;
+            }
+            e.Handled(true);
+            if (key == winrt::Windows::System::VirtualKey::Enter)
+            {
+                if (auto tab{ weakThis.get() })
+                {
+                    tab->SetTabText(sender.as<WUX::Controls::TextBox>().Text());
+                }
+            }
+            if (const auto strongFlyout{ weakFlyout.get() })
+            {
+                strongFlyout.Hide();
+            }
+        });
+        flyout.Opened([renameBox](auto&&, auto&&) {
+            renameBox.Focus(FocusState::Programmatic);
+            renameBox.SelectAll();
+        });
+        flyout.Closed([weakThis = get_weak()](auto&&, auto&&) {
+            if (auto tab{ weakThis.get() })
+            {
+                tab->RequestFocusActiveControl.raise();
+            }
+        });
+
+        flyout.ShowAt(_flyoutAnchor);
     }
 
     // Method Description:
@@ -2312,6 +2385,7 @@ namespace winrt::TerminalApp::implementation
         // then look to _themeColor to see if there's a value there.
         // Otherwise, clear our color, falling back to the TabView defaults.
         const auto currentColor = GetTabColor();
+        AccentBrush(currentColor.has_value() ? Media::SolidColorBrush{ currentColor.value() } : nullptr);
         if (currentColor.has_value())
         {
             _ApplyTabColorOnUIThread(currentColor.value());

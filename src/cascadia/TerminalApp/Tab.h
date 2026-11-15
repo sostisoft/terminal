@@ -70,6 +70,8 @@ namespace winrt::TerminalApp::implementation
         winrt::hstring GetTabText() const;
         void ResetTabText();
         void ActivateTabRenamer();
+        void RequestClose();
+        void FlyoutAnchor(const winrt::Windows::UI::Xaml::FrameworkElement& anchor);
 
         std::optional<winrt::Windows::UI::Color> GetTabColor();
         void SetRuntimeTabColor(const winrt::Windows::UI::Color& color);
@@ -133,6 +135,7 @@ namespace winrt::TerminalApp::implementation
         WINRT_OBSERVABLE_PROPERTY(winrt::hstring, Title, PropertyChanged.raise);
         WINRT_OBSERVABLE_PROPERTY(winrt::hstring, Icon, PropertyChanged.raise);
         WINRT_OBSERVABLE_PROPERTY(bool, ReadOnly, PropertyChanged.raise, false);
+        WINRT_OBSERVABLE_PROPERTY(winrt::Windows::UI::Xaml::Media::Brush, AccentBrush, PropertyChanged.raise, nullptr);
         WINRT_PROPERTY(winrt::Microsoft::UI::Xaml::Controls::TabViewItem, TabViewItem, nullptr);
 
         WINRT_OBSERVABLE_PROPERTY(winrt::Windows::UI::Xaml::FrameworkElement, Content, PropertyChanged.raise, nullptr);
@@ -174,6 +177,7 @@ namespace winrt::TerminalApp::implementation
         winrt::TerminalApp::TerminalTabStatus _tabStatus{};
 
         winrt::TerminalApp::ColorPickupFlyout _tabColorPickup{ nullptr };
+        winrt::Windows::UI::Xaml::FrameworkElement _flyoutAnchor{ nullptr };
         winrt::event_token _colorSelectedToken;
         winrt::event_token _colorClearedToken;
         winrt::event_token _pickerClosedToken;
@@ -253,6 +257,8 @@ namespace winrt::TerminalApp::implementation
         void _RefreshVisualState();
 
         bool _focused() const noexcept;
+        winrt::Windows::UI::Xaml::FrameworkElement _flyoutTarget() const;
+        void _showRenameFlyout();
         void _updateIsClosable();
 
         void _addBroadcastHandlers(const winrt::Microsoft::Terminal::Control::TermControl& control, ContentEventTokens& events);

@@ -10,6 +10,7 @@ namespace TerminalApp
         String Title { get; };
         String Icon { get; };
         Boolean ReadOnly { get; };
+        Windows.UI.Xaml.Media.Brush AccentBrush { get; };
         Microsoft.Terminal.Settings.Model.TabCloseButtonVisibility CloseButtonVisibility { get; set; };
 
         Microsoft.UI.Xaml.Controls.TabViewItem TabViewItem { get; };
@@ -23,6 +24,7 @@ namespace TerminalApp
 
         void Focus(Windows.UI.Xaml.FocusState focusState);
         void Close();
+        void RequestClose();
         void Shutdown();
 
         void SetDispatch(ShortcutActionDispatch dispatch);

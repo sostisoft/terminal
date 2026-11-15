@@ -42,13 +42,108 @@
             </mux:InfoBar>
         </StackPanel>
 
-        <Grid x:Name="TabContent"
-              Grid.Row="2"
+        <Grid Grid.Row="2"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
-            <Grid.Background>
-                <ImageBrush />
-            </Grid.Background>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ListView x:Name="VerticalTabList"
+                      Grid.Column="0"
+                      Width="220"
+                      Padding="0,4,0,4"
+                      AllowDrop="True"
+                      CanDragItems="True"
+                      CanReorderItems="False"
+                      ContainerContentChanging="_OnVerticalTabContainerContentChanging"
+                      DragItemsCompleted="_OnVerticalTabDragItemsCompleted"
+                      DragItemsStarting="_OnVerticalTabDragItemsStarting"
+                      DragOver="_OnVerticalTabDragOver"
+                      Drop="_OnVerticalTabDrop"
+                      IsItemClickEnabled="False"
+                      RightTapped="_OnVerticalTabRightTapped"
+                      SelectionChanged="_OnVerticalTabSelectionChanged"
+                      SelectionMode="Single"
+                      Visibility="Collapsed">
+                <ListView.Resources>
+                    <ResourceDictionary>
+                        <ResourceDictionary.ThemeDictionaries>
+                        <ResourceDictionary x:Key="Dark">
+                            <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1AFFFFFF" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#14FFFFFF" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#33FFFFFF" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#40FFFFFF" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#2AFFFFFF" />
+                            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#FFFFFFFF" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="Light">
+                            <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1A000000" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#14000000" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#33000000" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#40000000" />
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#2A000000" />
+                            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#FF000000" />
+                        </ResourceDictionary>
+                        </ResourceDictionary.ThemeDictionaries>
+                    </ResourceDictionary>
+                </ListView.Resources>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="MinHeight" Value="34" />
+                        <Setter Property="Padding" Value="8,0,8,0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="local:Tab">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="4"
+                                    Height="18"
+                                    VerticalAlignment="Center"
+                                    Background="{x:Bind AccentBrush, Mode=OneWay}"
+                                    CornerRadius="2" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{x:Bind Title, Mode=OneWay}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTipService.ToolTip="{x:Bind Title, Mode=OneWay}" />
+                            <Button x:Uid="VerticalTabCloseButton"
+                                    Grid.Column="2"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Click="{x:Bind RequestClose}"
+                                    IsHitTestVisible="False"
+                                    IsTabStop="False"
+                                    Opacity="0">
+                                <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          FontSize="10"
+                                          Glyph="&#xE711;" />
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <Grid x:Name="TabContent"
+                  Grid.Column="1"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch">
+                <Grid.Background>
+                    <ImageBrush />
+                </Grid.Background>
+            </Grid>
         </Grid>
 
         <!--
