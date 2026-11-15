@@ -1462,7 +1462,6 @@ namespace winrt::TerminalApp::implementation
         }
 
         const auto verticalTabList = VerticalTabList();
-        verticalTabList.CanDragItems(CanDragDrop());
         verticalTabList.ItemsSource(enabled ? _tabs : nullptr);
         _UpdateTabView();
         _syncVerticalTabSelection();
@@ -1653,64 +1652,5 @@ namespace winrt::TerminalApp::implementation
             });
         }
         _updateVerticalTabCloseButton(container, false);
-    }
-
-    void TerminalPage::_OnVerticalTabDragItemsStarting(const IInspectable& /*sender*/, const DragItemsStartingEventArgs& e)
-    {
-        const auto items = e.Items();
-        _verticalDragTab = items.Size() > 0 ? items.GetAt(0).try_as<winrt::TerminalApp::Tab>() : nullptr;
-        if (!_verticalDragTab)
-        {
-            e.Cancel(true);
-            return;
-        }
-        e.Data().RequestedOperation(DataPackageOperation::Move);
-    }
-
-    void TerminalPage::_OnVerticalTabDragOver(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::DragEventArgs& e)
-    {
-        if (_verticalDragTab)
-        {
-            e.AcceptedOperation(DataPackageOperation::Move);
-            e.Handled(true);
-        }
-    }
-
-    void TerminalPage::_OnVerticalTabDrop(const IInspectable& /*sender*/, const winrt::Windows::UI::Xaml::DragEventArgs& e)
-    {
-        if (!_verticalDragTab)
-        {
-            return;
-        }
-
-        uint32_t from{};
-        if (!_tabs.IndexOf(_verticalDragTab, from))
-        {
-            return;
-        }
-
-        const auto verticalTabList = VerticalTabList();
-        const auto size = _tabs.Size();
-        auto insertBefore = size;
-        for (uint32_t i = 0; i < size; ++i)
-        {
-            if (const auto container{ verticalTabList.ContainerFromIndex(i).try_as<FrameworkElement>() })
-            {
-                if (e.GetPosition(container).Y < container.ActualHeight() / 2)
-                {
-                    insertBefore = i;
-                    break;
-                }
-            }
-        }
-
-        const auto to = insertBefore > from ? insertBefore - 1 : insertBefore;
-        e.Handled(true);
-        _TryMoveTab(from, gsl::narrow_cast<int32_t>(to));
-    }
-
-    void TerminalPage::_OnVerticalTabDragItemsCompleted(const ListViewBase& /*sender*/, const DragItemsCompletedEventArgs& /*e*/)
-    {
-        _verticalDragTab = nullptr;
     }
 }

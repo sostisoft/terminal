@@ -303,7 +303,6 @@ namespace winrt::TerminalApp::implementation
 
         bool _rearranging{ false };
         bool _syncingVerticalTabs{ false };
-        winrt::TerminalApp::Tab _verticalDragTab{ nullptr };
         std::optional<int> _rearrangeFrom{};
         std::optional<int> _rearrangeTo{};
         bool _removing{ false };
@@ -408,10 +407,6 @@ namespace winrt::TerminalApp::implementation
         void _OnVerticalTabPointerReleased(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         void _OnVerticalTabRightTapped(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::RightTappedRoutedEventArgs& e);
         void _OnVerticalTabContainerContentChanging(const Windows::UI::Xaml::Controls::ListViewBase& sender, const Windows::UI::Xaml::Controls::ContainerContentChangingEventArgs& e);
-        void _OnVerticalTabDragItemsStarting(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Controls::DragItemsStartingEventArgs& e);
-        void _OnVerticalTabDragOver(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::DragEventArgs& e);
-        void _OnVerticalTabDrop(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::DragEventArgs& e);
-        void _OnVerticalTabDragItemsCompleted(const Windows::UI::Xaml::Controls::ListViewBase& sender, const Windows::UI::Xaml::Controls::DragItemsCompletedEventArgs& e);
         void _updateVerticalTabCloseButton(const Windows::UI::Xaml::Controls::Primitives::SelectorItem& container, bool hovered);
         void _updateAllVerticalTabCloseButtons();
         void _UpdateTabWidthMode();

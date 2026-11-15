@@ -54,14 +54,9 @@
                       Grid.Column="0"
                       Width="220"
                       Padding="0,4,0,4"
-                      AllowDrop="True"
-                      CanDragItems="True"
+                      CanDragItems="False"
                       CanReorderItems="False"
                       ContainerContentChanging="_OnVerticalTabContainerContentChanging"
-                      DragItemsCompleted="_OnVerticalTabDragItemsCompleted"
-                      DragItemsStarting="_OnVerticalTabDragItemsStarting"
-                      DragOver="_OnVerticalTabDragOver"
-                      Drop="_OnVerticalTabDrop"
                       IsItemClickEnabled="False"
                       RightTapped="_OnVerticalTabRightTapped"
                       SelectionChanged="_OnVerticalTabSelectionChanged"
@@ -70,22 +65,22 @@
                 <ListView.Resources>
                     <ResourceDictionary>
                         <ResourceDictionary.ThemeDictionaries>
-                        <ResourceDictionary x:Key="Dark">
-                            <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1AFFFFFF" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#14FFFFFF" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#33FFFFFF" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#40FFFFFF" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#2AFFFFFF" />
-                            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#FFFFFFFF" />
-                        </ResourceDictionary>
-                        <ResourceDictionary x:Key="Light">
-                            <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1A000000" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#14000000" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#33000000" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#40000000" />
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#2A000000" />
-                            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#FF000000" />
-                        </ResourceDictionary>
+                            <ResourceDictionary x:Key="Dark">
+                                <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1AFFFFFF" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#14FFFFFF" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#33FFFFFF" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#40FFFFFF" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#2AFFFFFF" />
+                                <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#FFFFFFFF" />
+                            </ResourceDictionary>
+                            <ResourceDictionary x:Key="Light">
+                                <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#1A000000" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#14000000" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#33000000" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#40000000" />
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#2A000000" />
+                                <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#FF000000" />
+                            </ResourceDictionary>
                         </ResourceDictionary.ThemeDictionaries>
                     </ResourceDictionary>
                 </ListView.Resources>
