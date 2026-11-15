@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="frame" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#14C8BE"/><stop offset="1" stop-color="#7C4DFF"/></linearGradient>
+<clipPath id="bodyClip"><rect x="3.2" y="8.2" width="41.6" height="35.6" rx="5"/></clipPath>
+</defs>
+<!-- gradient frame / title bar -->
+<rect x="1" y="2" width="46" height="44" rx="8" fill="url(#frame)"/>
+<!-- dark body -->
+<rect x="3.2" y="8.2" width="41.6" height="35.6" rx="5" fill="#12141C"/>
+<!-- sidebar -->
+<g clip-path="url(#bodyClip)">
+<rect x="3.2" y="8.2" width="14.6" height="35.6" fill="#1E212E"/>
+<rect x="17.8" y="8.2" width="0.7" height="35.6" fill="#000000" fill-opacity="0.35"/>
+</g>
+<!-- tab pills -->
+<rect x="5" y="11" width="11" height="8" rx="2.4" fill="#3A3F58"/>
+<rect x="5.9" y="12.6" width="1.6" height="4.8" rx="0.8" fill="#3CBE5A"/>
+<rect x="9.2" y="13.6" width="4.8" height="1.4" rx="0.7" fill="#969CB4"/>
+<rect x="9.2" y="15.8" width="2.8" height="1.1" rx="0.55" fill="#6E748C"/>
+<rect x="5" y="22" width="11" height="8" rx="2.4" fill="#282C3E"/>
+<rect x="5.9" y="23.6" width="1.6" height="4.8" rx="0.8" fill="#9678FF"/>
+<rect x="9.2" y="24.6" width="3.8" height="1.4" rx="0.7" fill="#6E748C"/>
+<rect x="9.2" y="26.8" width="2.8" height="1.1" rx="0.55" fill="#6E748C"/>
+<rect x="5" y="33" width="11" height="8" rx="2.4" fill="#282C3E"/>
+<rect x="5.9" y="34.6" width="1.6" height="4.8" rx="0.8" fill="#EB4646"/>
+<rect x="9.2" y="35.6" width="3.8" height="1.4" rx="0.7" fill="#6E748C"/>
+<rect x="9.2" y="37.8" width="2.8" height="1.1" rx="0.55" fill="#6E748C"/>
+<!-- >_ prompt -->
+<path d="M23.2 19.5L30.2 26.2L23.2 32.9" stroke="#5EEAD4" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="32.2" y="34.4" width="8.8" height="3.2" rx="1.5" fill="#EBF0FF"/>
+</svg>
